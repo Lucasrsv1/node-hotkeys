@@ -33,9 +33,19 @@
 const iohook = require('iohook');
 
 /**
- * @type Hotkey[]
+ * @type {Hotkey[]} hotkeys in use
  */
 var _registeredHotkeys = [];
+
+/**
+ * @type {Promise<string>} promise used when waiting for an event that will be translated into a hotkey string definition
+ */
+var _pendingPromise = null;
+
+/**
+ * @type {Function} function that resolves the _pendingPromise
+ */
+var _promiseResolve = null;
 
 /**
  * Identifies hotkeys and set them to be compared to keypress events
@@ -196,9 +206,72 @@ function removeHotkey (options) {
 	});
 }
 
+/**
+ * Translates a keypress event into a hotkey string definition
+ * @param {KeypressEvent} event user's keypress event
+ * @returns {string} the hotkey string definition
+ */
+function _toHotkeyStr (event) {
+	let hotkeyStr = [];
+	if (event.altKey)
+		hotkeyStr.push("alt");
+
+	if (event.ctrlKey)
+		hotkeyStr.push("ctrl");
+
+	if (event.shiftKey)
+		hotkeyStr.push("shift");
+
+	switch (event.rawcode) {
+		case 13:
+			hotkeyStr.push("enter");
+			break;
+		case 32:
+			hotkeyStr.push("space");
+			break;
+		case 9:
+			hotkeyStr.push("tab");
+			break;
+		case 27:
+			hotkeyStr.push("esc");
+			break;
+		case 8:
+			hotkeyStr.push("backspace");
+			break;
+		default:
+			if (event.keychar === '+'.charCodeAt(0))
+				hotkeyStr.push("plus");
+			else
+				hotkeyStr.push(String.fromCharCode(event.keychar));
+	}
+
+	return hotkeyStr.join(" + ");
+}
+
+/**
+ * Detect the next hotkey pressed by the user and translates it into a hotkey string definition
+ * @returns {Promise<string>} promise that will be resolved with the hotkey
+ */
+function getNextHotkey () {
+	if (_pendingPromise)
+		return _pendingPromise;
+
+	let promise = new Promise((resolve, reject) => {
+		_promiseResolve = resolve;
+	}).then(function (hotkeyStr) {
+		_pendingPromise = null;
+		_promiseResolve = null;
+		return hotkeyStr;
+	});
+
+	_pendingPromise = promise;
+	return promise;
+}
+
 // Handle pressed keys
 iohook.on("keypress", event => {
-	// console.log(event);
+	if (_promiseResolve)
+		_promiseResolve(_toHotkeyStr(event));
 
 	for (let hotkey of _registeredHotkeys) {
 		let activated = false;
@@ -224,6 +297,7 @@ iohook.start();
 module.exports = {
 	on: registerHotkey,
 	remove: removeHotkey,
+	getNextHotkey: getNextHotkey,
 	get iohook () {
 		return iohook;
 	},

@@ -161,10 +161,27 @@ hotkeys.remove({ hotkeys: "ctrl + a" });
 ```
 PS: when removing hotkeys all modifiers will always be checked and only if they match that the hotkey will be removed. So `matchAllModifiers` is automatically set `true`.
 
+### Detecting any hotkeys
+It is also possible to detect what combination of keys the user pressed by using the method `getNextHotkey`:
+```javascript
+(async () => {
+	while (true) {
+		let hotkeyStr = await hotkeys.getNextHotkey();
+		console.log("Detected:", hotkeyStr);
+	}
+})();
+```
+
+The code above prints in the console every hotkey pressed by the user, it can be used, for instance, when asking for the user to choose a custom hotkey. The method `getNextHotkey` returns a `Promise` that will be resolved with the hotkey string definition that the user chose. So if you press alt + shift + y with capslock disabled, the output will be:
+```
+Detected: alt + shift + Y
+```
+
 ### Access the IOHook instance
 ```javascript
 hotkeys.iohook
 ```
+More information about IOHook on [this link](https://github.com/wilix-team/iohook).
 
 ### Debug hotkeys being used
 #### Example of use:

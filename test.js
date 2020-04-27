@@ -11,3 +11,10 @@ hotkeys.on({
 });
 
 hotkeys.logRegisteredHotkeys();
+
+(async () => {
+	while (true) {
+		let hotkeyStr = await hotkeys.getNextHotkey();
+		console.log("Detected:", hotkeyStr);
+	}
+})();
