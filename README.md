@@ -5,7 +5,7 @@ Handle hotkeys on NodeJS easily.
 ### Registering hotkeys
 #### Simple use
 ```javascript
-const hotkeys = require('hotkeys');
+const hotkeys = require('node-hotkeys');
 
 hotkeys.on({
 	hotkeys: 'ctrl + a',
