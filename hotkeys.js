@@ -30,12 +30,32 @@
  * @property {boolean} [matchAllModifiers] determines whether all the modifiers of the event must be equal to the hotkey setup
  */
 
+/**
+ * @callback DebounceListenerCallback called when the listener is triggered
+ * @param {string} value input content
+ * @param {KeypressEvent[]} events input events list
+ */
+
+/**
+ * @typedef DebounceListener listener definition
+ * @property {number} triggerTime how long, in ms, until triggering the listener
+ * @property {Date} start stores the moment in which the first input happened
+ * @property {string} value current saved value
+ * @property {KeypressEvent[]} events current saved events list
+ * @property {DebounceListenerCallback} callback defines what callback function must be called if this listener is triggered
+ */
+
 const iohook = require('iohook');
 
 /**
  * @type {Hotkey[]} hotkeys in use
  */
 var _registeredHotkeys = [];
+
+/**
+ * @type {DebounceListener[]} debounce listeners in use
+ */
+var _registeredDebounceListeners = [];
 
 /**
  * @type {Promise<string>} promise used when waiting for an event that will be translated into a hotkey string definition
@@ -249,6 +269,56 @@ function _toHotkeyStr (event) {
 }
 
 /**
+ * Wait the debounce time until triggering the listener
+ * @param {DebounceListener} listener listener being evaluated
+ * @param {number} ms time until next trigger check
+ */
+function _handleDebounce (listener, ms) {
+	setTimeout(() => {
+		let timePassed = new Date() - listener.start;
+		if (timePassed >= listener.triggerTime) {
+			listener.callback(listener.value, listener.events);
+			listener.value = "";
+			listener.events = [];
+			listener.start = null;
+		} else {
+			_handleDebounce(listener, listener.triggerTime - timePassed);
+		}
+	}, ms);
+}
+
+/**
+ * Add input to debounce listeners
+ * @param {KeypressEvent} event user's keypress event
+ */
+function _handleInputs (event) {
+	for (let listener of _registeredDebounceListeners) {
+		listener.events.push(event);
+		listener.value += String.fromCharCode(event.keychar);
+
+		if (!listener.start)
+			_handleDebounce(listener, listener.triggerTime);
+
+		listener.start = new Date();
+	}
+}
+
+/**
+ * Register a new debounce listener
+ * @param {number} ms debounce time until triggering the listener
+ * @property {DebounceListenerCallback} callback defines what callback function must be called if this listener is triggered
+ */
+function debounce (ms, callback) {
+	_registeredDebounceListeners.push({
+		triggerTime: ms,
+		started: false,
+		value: "",
+		events: [],
+		callback
+	});
+}
+
+/**
  * Detect the next hotkey pressed by the user and translates it into a hotkey string definition
  * @returns {Promise<string>} promise that will be resolved with the hotkey
  */
@@ -289,6 +359,8 @@ iohook.on("keypress", event => {
 		if (activated)
 			hotkey.callback(hotkey.hotkeyStr);
 	}
+
+	_handleInputs(event);
 });
 
 // Start listening for keys pressed
@@ -297,7 +369,8 @@ iohook.start();
 module.exports = {
 	on: registerHotkey,
 	remove: removeHotkey,
-	getNextHotkey: getNextHotkey,
+	getNextHotkey,
+	debounce,
 	get iohook () {
 		return iohook;
 	},

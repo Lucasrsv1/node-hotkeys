@@ -237,3 +237,20 @@ hotkeys.logRegisteredHotkeys();
 	"hotkeyStr": "ctrl + h, H"
 }]
 ```
+
+### Using Debounce Listeners
+The `debounce` method can register a callback to be called whenever the user press keys or type some text. You must define a debounce time in milliseconds and the callback that will receive the content typed as a string and the `KeypressEvent`s array with each key pressed.
+
+#### Definition:
+```typescript
+debounce (ms: number, callback: (string, KeypressEvent[]) => void): void
+```
+
+#### Example of use:
+```javascript
+const hotkeys = require('node-hotkeys');
+
+hotkeys.debounce(500, function (value, events) {
+	console.log("INPUT:", value);
+});
+```
