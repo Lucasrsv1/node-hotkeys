@@ -5,6 +5,7 @@
  * @property {boolean} altKey defines if the alt key is part of this hotkey
  * @property {boolean} ctrlKey defines if the ctrl key is part of this hotkey
  * @property {boolean} matchAllModifiers defines if all the modifiers of the event must be equal to the ones defined in this hotkey
+ * @property {boolean} useKeyDown defines if keydown events are valid for hotkey detection
  * @property {Function} callback defines what callback function must be called if this hotkey is pressed
  * @property {number} [keychar] ASCII code of the input (takes capitalization into consideration)
  * @property {number} [rawcode] code of the button pressed (doesn't take capitalization into consideration)
@@ -28,6 +29,7 @@
  * @property {boolean} [triggerAll] determines whether to call the callback function for each hotkey that may compose this configuration
  * @property {boolean} [capitalization] determines whether to differentiate uppercase and lowercase letters
  * @property {boolean} [matchAllModifiers] determines whether all the modifiers of the event must be equal to the hotkey setup
+ * @property {boolean} [useKeyDown] determines whether to listen to keydown events
  */
 
 /**
@@ -46,6 +48,39 @@
  */
 
 const iohook = require('iohook');
+
+const charsMap = {
+	"backspace": 8,
+	"tab": 9,
+	"enter": 13,
+	"capslock": 20,
+	"esc": 27,
+	"pgup": 33,
+	"space": 32,
+	"pgdn": 34,
+	"end": 35,
+	"home": 36,
+	"left": 37,
+	"up": 38,
+	"right": 39,
+	"down": 40,
+	"prtsc": 44,
+	"insert": 45,
+	"delete": 46,
+	"cmd": 91,
+	"F1": 112,
+	"F2": 113,
+	"F3": 114,
+	"F4": 115,
+	"F5": 116,
+	"F6": 117,
+	"F7": 118,
+	"F8": 119,
+	"F9": 120,
+	"F10": 121,
+	"F11": 122,
+	"F12": 123
+};
 
 /**
  * @type {Hotkey[]} hotkeys in use
@@ -68,6 +103,11 @@ var _pendingPromise = null;
 var _promiseResolve = null;
 
 /**
+ * @type {Boolean} determine if keydown events are valid hotkeys
+ */
+var _includingKeydownEvent = false;
+
+/**
  * Identifies hotkeys and set them to be compared to keypress events
  * @param {HotkeysOptions} options hotkey configuration options
  * @returns {Hotkey[]} list of hotkeys definitions
@@ -77,6 +117,7 @@ function _getHotkeysFromOptions (options) {
 	options.splitKey = options.splitKey || "+";
 	options.capitalization = options.capitalization || false;
 	options.matchAllModifiers = options.matchAllModifiers || false;
+	options.useKeyDown = options.useKeyDown || false;
 
 	let cmds = options.hotkeys.split(",").map(s => s.trim());
 	for (let cmd of cmds) {
@@ -91,41 +132,36 @@ function _getHotkeysFromOptions (options) {
 			shiftKey: keys.indexOf('shift') != -1,
 			altKey: keys.indexOf('alt') != -1,
 			ctrlKey: keys.indexOf('ctrl') != -1,
-			matchAllModifiers: options.matchAllModifiers
+			matchAllModifiers: options.matchAllModifiers,
+			useKeyDown: options.useKeyDown
 		};
 
-		if (hotkey.altKey && hotkey.ctrlKey)
-			throw new Error(`The combination ctrl+alt cannot be detected.`);
-
 		let lastKey = keys[keys.length - 1];
-		switch (lastKey) {
-			case "plus":
-				hotkey.keychar = '+'.charCodeAt(0);
-				break;
-			case "enter":
-				hotkey.rawcode = 13;
-				break;
-			case "space":
-				hotkey.rawcode = 32;
-				break;
-			case "tab":
-				hotkey.rawcode = 9;
-				break;
-			case "esc":
-				hotkey.rawcode = 27;
-				break;
-			case "backspace":
-				hotkey.rawcode = 8;
-				break;
-			default:
-				if (lastKey.length > 1)
-					throw new Error(`The key ${lastKey} is invalid.`);
+		if (lastKey in charsMap) {
+			hotkey.rawcode = charsMap[lastKey];
+		} else if (lastKey === "plus") {
+			hotkey.keychar = '+'.charCodeAt(0);
+		} else if (["ctrl", "shift", "alt"].includes(lastKey)) {
+			switch (lastKey) {
+				case "shift":
+					hotkey.rawcode = 160;
+					break;
+				case "ctrl":
+					hotkey.rawcode = 162;
+					break;
+				case "alt":
+					hotkey.rawcode = 164;
+					break;
+			}
+		} else {
+			if (lastKey.length > 1)
+				throw new Error(`The key ${lastKey} is invalid.`);
 
-				// If capitalization doesn't matter and the key is a letter
-				if (!options.capitalization && lastKey.match(/[a-z]/i))
-					hotkey.rawcode = lastKey.toUpperCase().charCodeAt(0);
-				else
-					hotkey.keychar = lastKey.charCodeAt(0);
+			// If capitalization doesn't matter and the key is a letter
+			if (!options.capitalization && lastKey.match(/[a-z]/i))
+				hotkey.rawcode = lastKey.toUpperCase().charCodeAt(0);
+			else
+				hotkey.keychar = lastKey.charCodeAt(0);
 		}
 
 		hotkeys.push(hotkey);
@@ -242,27 +278,20 @@ function _toHotkeyStr (event) {
 	if (event.shiftKey)
 		hotkeyStr.push("shift");
 
-	switch (event.rawcode) {
-		case 13:
-			hotkeyStr.push("enter");
+	let found = false;
+	for (let key in charsMap) {
+		if (event.rawcode == charsMap[key]) {
+			hotkeyStr.push(key);
+			found = true;
 			break;
-		case 32:
-			hotkeyStr.push("space");
-			break;
-		case 9:
-			hotkeyStr.push("tab");
-			break;
-		case 27:
-			hotkeyStr.push("esc");
-			break;
-		case 8:
-			hotkeyStr.push("backspace");
-			break;
-		default:
-			if (event.keychar === '+'.charCodeAt(0))
-				hotkeyStr.push("plus");
-			else
-				hotkeyStr.push(String.fromCharCode(event.keychar));
+		}
+	}
+
+	if (!found) {
+		if (event.keychar === '+'.charCodeAt(0))
+			hotkeyStr.push("plus");
+		else if (![160, 162, 164].includes(event.rawcode))
+			hotkeyStr.push(String.fromCharCode(event.keychar));
 	}
 
 	return hotkeyStr.join(" + ");
@@ -320,9 +349,11 @@ function debounce (ms, callback) {
 
 /**
  * Detect the next hotkey pressed by the user and translates it into a hotkey string definition
+ * @param {Boolean} [includeKeydownEvent] determine whether to listen to hotkeys from keydown events
  * @returns {Promise<string>} promise that will be resolved with the hotkey
  */
-function getNextHotkey () {
+function getNextHotkey (includeKeydownEvent) {
+	_includingKeydownEvent = includeKeydownEvent;
 	if (_pendingPromise)
 		return _pendingPromise;
 
@@ -338,12 +369,18 @@ function getNextHotkey () {
 	return promise;
 }
 
-// Handle pressed keys
-iohook.on("keypress", event => {
-	if (_promiseResolve)
+/**
+ * Handle pressed keys and check if they are hotkeys
+ * @param {any} event user input event
+ * @param {boolean} isDown true if the input was detected by a keydown event listener
+ */
+function handleKeys (event, isDown) {
+	if (_promiseResolve && (!isDown || _includingKeydownEvent))
 		_promiseResolve(_toHotkeyStr(event));
 
 	for (let hotkey of _registeredHotkeys) {
+		if (isDown && !hotkey.useKeyDown) continue;
+
 		let activated = false;
 		if (hotkey.hotkeys) {
 			for (let key of hotkey.hotkeys) {
@@ -360,7 +397,18 @@ iohook.on("keypress", event => {
 			hotkey.callback(hotkey.hotkeyStr);
 	}
 
-	_handleInputs(event);
+	if (!isDown)
+		_handleInputs(event);
+}
+
+// Handle keyspress event
+iohook.on("keypress", event => {
+	handleKeys(event, false);
+});
+
+// Handle keysdown event
+iohook.on("keydown", event => {
+	handleKeys(event, true);
 });
 
 // Start listening for keys pressed

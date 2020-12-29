@@ -1,9 +1,8 @@
-# Node Hotkeys
+# Node Hotkeys #
 Handle hotkeys on NodeJS easily.
 
-## Usage
-### Registering hotkeys
-#### Simple use
+## Registering hotkeys ##
+### Simple use ###
 ```javascript
 const hotkeys = require('node-hotkeys');
 
@@ -21,7 +20,7 @@ If ctrl + a is pressed, the output will be:
 Activated: ctrl + a
 ```
 
-#### Multiple hotkeys
+### Multiple hotkeys ###
 Separate the hotkeys using comma:
 ```javascript
 hotkeys.on({
@@ -38,7 +37,7 @@ If any of the registered hotkeys are pressed, the output will be:
 Activated: alt + a, shift + a, ctrl + a
 ```
 
-#### Triggering multiple hotkeys
+### Triggering multiple hotkeys ###
 By adding the option `triggerAll` we can call the callback function for each of the hotkeys pressed:
 ```javascript
 hotkeys.on({
@@ -57,7 +56,7 @@ Activated: shift + a
 Activated: alt + a
 ```
 
-#### Matching only the required modifiers
+### Matching only the required modifiers ###
 If we set `matchAllModifiers` to `false` then we'll be able to detect hotkeys that may have been pressed accompanied by other modifiers:
 ```javascript
 hotkeys.on({
@@ -83,7 +82,7 @@ Activated: a
 
 PS: the modifiers are `alt`, `shift` and `ctrl`.
 
-#### Matching capitalization
+### Matching capitalization ###
 If you would like to differentiate uppercase and lowercase letters, add the `capitalization` option:
 ```javascript
 hotkeys.on({
@@ -96,27 +95,27 @@ hotkeys.on({
 });
 ```
 
-If you have capslock disabled and press ctrl + a, the output will be:
+If you have caps lock disabled and press ctrl + a, the output will be:
 ```
 Activated: ctrl + a
 ```
 
-If you have capslock disabled and press ctrl + shift + a, the output will be:
+If you have caps lock disabled and press ctrl + shift + a, the output will be:
 ```
 Activated: ctrl + A
 ```
 
-If you have capslock enabled and press ctrl + a, the output will be:
+If you have caps lock enabled and press ctrl + a, the output will be:
 ```
 Activated: ctrl + A
 ```
 
-And if you have capslock enabled and press ctrl + shift + a, the output will be:
+And if you have caps lock enabled and press ctrl + shift + a, the output will be:
 ```
 Activated: ctrl + a
 ```
 
-#### Special cases
+### Special cases ###
 ```javascript
 hotkeys.on({
 	hotkeys: 'shift + plus, enter, space, tab, esc, backspace',
@@ -137,7 +136,32 @@ Activated: esc
 Activated: backspace
 ```
 
-#### Split key
+### Detecting special keys ###
+Some keys do not have a character representation, thus they can only be detected using `keydown` events, which you can turn on by setting the option `useKeyDown` to `true`:
+```javascript
+hotkeys.on({
+	hotkeys: 'left, up, right, down',
+	matchAllModifiers: true,
+	triggerAll: true,
+	useKeyDown: true,
+	callback: function (hotkey) {
+		console.log("Arrow:", hotkey);
+	}
+});
+```
+
+If we press those keys in that order, the output will be:
+```
+Arrow: left
+Arrow: up
+Arrow: right
+Arrow: down
+```
+
+Other special keys: `capslock`, `pgup`, `pgdn`, `end`, `home`, `prtsc`, `insert`, `delete`, `cmd`, `F1`, `F2`, `F3`, `F4`, `F5`, `F6`, `F7`, `F8`, `F9`, `F10`, `F11`, `F12`.
+
+
+### Split key ###
 The split key is used to combine keys in order to define the hotkey, the default split key is `+`. But it can be changed using the `splitKey` option:
 ```javascript
 hotkeys.on({
@@ -154,37 +178,37 @@ If we press shift and +, the output will be:
 Activated: shift - +
 ```
 
-### Removing hotkeys
+## Removing hotkeys ##
 The following method has support to the same options of the method `on()` used to register the hotkeys.
 ```javascript
 hotkeys.remove({ hotkeys: "ctrl + a" });
 ```
 PS: when removing hotkeys all modifiers will always be checked and only if they match that the hotkey will be removed. So `matchAllModifiers` is automatically set `true`.
 
-### Detecting any hotkeys
+## Detecting any hotkeys ##
 It is also possible to detect what combination of keys the user pressed by using the method `getNextHotkey`:
 ```javascript
 (async () => {
 	while (true) {
-		let hotkeyStr = await hotkeys.getNextHotkey();
+		let hotkeyStr = await hotkeys.getNextHotkey(false);
 		console.log("Detected:", hotkeyStr);
 	}
 })();
 ```
 
-The code above prints in the console every hotkey pressed by the user, it can be used, for instance, when asking for the user to choose a custom hotkey. The method `getNextHotkey` returns a `Promise` that will be resolved with the hotkey string definition that the user chose. So if you press alt + shift + y with capslock disabled, the output will be:
+The code above prints in the console every hotkey pressed by the user, it can be used, for instance, when asking for the user to choose a custom hotkey. The method `getNextHotkey` receives a `boolean` parameter that determines whether to listen to hotkeys from `keydown` events (when `true`) or only `keypress` events (when `false`). It also returns a `Promise` that will be resolved with the hotkey string definition that the user chose. So if you press alt + shift + y with caps lock disabled, the output will be:
 ```
 Detected: alt + shift + Y
 ```
 
-### Access the IOHook instance
+## Access the IOHook instance ##
 ```javascript
 hotkeys.iohook
 ```
 More information about IOHook on [this link](https://github.com/wilix-team/iohook).
 
-### Debug hotkeys being used
-#### Example of use:
+## Debug hotkeys being used ##
+### Example of use: ###
 ```javascript
 hotkeys.on({
 	hotkeys: 'alt + a, shift + a',
@@ -202,7 +226,7 @@ hotkeys.on({
 hotkeys.logRegisteredHotkeys();
 ```
 
-#### Output:
+### Output: ###
 ```JSON
 [{
 	"hotkeyStr": "alt + a",
@@ -238,15 +262,15 @@ hotkeys.logRegisteredHotkeys();
 }]
 ```
 
-### Using Debounce Listeners
+## Using Debounce Listeners ##
 The `debounce` method can register a callback to be called whenever the user press keys or type some text. You must define a debounce time in milliseconds and the callback that will receive the content typed as a string and the `KeypressEvent`s array with each key pressed.
 
-#### Definition:
+### Definition: ###
 ```typescript
 debounce (ms: number, callback: (string, KeypressEvent[]) => void): void
 ```
 
-#### Example of use:
+### Example of use: ###
 ```javascript
 const hotkeys = require('node-hotkeys');
 

@@ -10,6 +10,16 @@ hotkeys.on({
 	}
 });
 
+hotkeys.on({
+	hotkeys: 'left, up, right',
+	matchAllModifiers: true,
+	triggerAll: true,
+	useKeyDown: true,
+	callback: function (hotkey) {
+		console.log("Arrow:", hotkey);
+	}
+});
+
 hotkeys.logRegisteredHotkeys();
 
 (async () => {
