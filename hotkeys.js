@@ -88,9 +88,9 @@ const charsMap = {
 var _registeredHotkeys = [];
 
 /**
- * @type {DebounceListener[]} debounce listeners in use
+ * @type {{ [key: string]: DebounceListener }} debounce listeners in use
  */
-var _registeredDebounceListeners = [];
+var _registeredDebounceListeners = {};
 
 /**
  * @type {Promise<string>} promise used when waiting for an event that will be translated into a hotkey string definition
@@ -321,7 +321,8 @@ function _handleDebounce (listener, ms) {
  * @param {KeypressEvent} event user's keypress event
  */
 function _handleInputs (event) {
-	for (let listener of _registeredDebounceListeners) {
+	for (let key in _registeredDebounceListeners) {
+		let listener = _registeredDebounceListeners[key];
 		listener.events.push(event);
 		listener.value += String.fromCharCode(event.keychar);
 
@@ -333,18 +334,41 @@ function _handleInputs (event) {
 }
 
 /**
+ * Generates the next debounce listener key
+ * @returns {string}
+ */
+function _getNextDebounceKey () {
+	let key = `debounce_${new Date().valueOf()}`;
+	while (_registeredDebounceListeners.hasOwnProperty(key))
+		key = key.slice(0, 22) + ((+key[22] || 0) + 1);
+
+	return key;
+}
+
+/**
  * Register a new debounce listener
  * @param {number} ms debounce time until triggering the listener
- * @property {DebounceListenerCallback} callback defines what callback function must be called if this listener is triggered
+ * @param {DebounceListenerCallback} callback defines what callback function must be called if this listener is triggered
  */
 function debounce (ms, callback) {
-	_registeredDebounceListeners.push({
+	const key = _getNextDebounceKey();
+	_registeredDebounceListeners[key] = {
 		triggerTime: ms,
 		started: false,
 		value: "",
 		events: [],
 		callback
-	});
+	};
+
+	return key;
+}
+
+/**
+ * Remove a debounce listener
+ * @param {string} debounceKey debounce identifier
+ */
+function removeDebounce (debounceKey) {
+	delete _registeredDebounceListeners[debounceKey];
 }
 
 /**
@@ -419,6 +443,7 @@ module.exports = {
 	remove: removeHotkey,
 	getNextHotkey,
 	debounce,
+	removeDebounce,
 	get iohook () {
 		return iohook;
 	},

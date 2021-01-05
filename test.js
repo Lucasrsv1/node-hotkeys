@@ -5,7 +5,7 @@ hotkeys.on({
 	matchAllModifiers: true,
 	triggerAll: true,
 	capitalization: true,
-	callback: function (hotkey) {
+	callback: hotkey => {
 		console.log("Activated:", hotkey);
 	}
 });
@@ -15,7 +15,7 @@ hotkeys.on({
 	matchAllModifiers: true,
 	triggerAll: true,
 	useKeyDown: true,
-	callback: function (hotkey) {
+	callback: hotkey => {
 		console.log("Arrow:", hotkey);
 	}
 });

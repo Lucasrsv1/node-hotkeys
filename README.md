@@ -263,18 +263,23 @@ hotkeys.logRegisteredHotkeys();
 ```
 
 ## Using Debounce Listeners ##
-The `debounce` method can register a callback to be called whenever the user press keys or type some text. You must define a debounce time in milliseconds and the callback that will receive the content typed as a string and the `KeypressEvent`s array with each key pressed.
+The `debounce` method can register a callback to be called whenever the user presses keys or types some text. You must define a debounce time in milliseconds and the callback that will receive the content typed as a string and the `KeypressEvent`s array with each key pressed. The string returned by this method is a key that identifies the registered debounce listener so that you can remove it later using `removeDebounce`.
 
 ### Definition: ###
 ```typescript
-debounce (ms: number, callback: (string, KeypressEvent[]) => void): void
+debounce (ms: number, callback: (string, KeypressEvent[]) => void): string
 ```
 
 ### Example of use: ###
 ```javascript
 const hotkeys = require('node-hotkeys');
 
-hotkeys.debounce(500, function (value, events) {
+const key = hotkeys.debounce(500, (value, events) => {
 	console.log("INPUT:", value);
 });
+```
+
+### Removing debounce listeners: ###
+```javascript
+hotkeys.removeDebounce(key);
 ```
